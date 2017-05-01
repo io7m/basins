@@ -16,19 +16,15 @@
 
 package com.io7m.basins.core;
 
-/**
- * Placeholder.
- */
+import org.immutables.value.Value;
 
-public final class Placeholder
+@BasinsImmutableStyleType
+@Value.Immutable
+public interface ConvexPolygonConnectionType
 {
-  /**
-   * Construct a placeholder.
-   */
+  @Value.Parameter(order = 0)
+  ConvexPolygon polygon0();
 
-  public Placeholder()
-  {
-
-  }
+  @Value.Parameter(order = 1)
+  ConvexPolygon polygon1();
 }
-
