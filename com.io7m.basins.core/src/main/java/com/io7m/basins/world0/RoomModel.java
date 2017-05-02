@@ -1,11 +1,14 @@
 package com.io7m.basins.world0;
 
 import com.io7m.jnull.NullCheck;
+import io.reactivex.Observable;
+import io.reactivex.subjects.PublishSubject;
 import javaslang.collection.Vector;
 
 public final class RoomModel
 {
   private final int stack_max;
+  private final PublishSubject<RoomModelUndoAvailable> observable;
   private Vector<RoomModelOpType<?>> undo_stack;
   private RoomModelState state;
 
@@ -19,6 +22,12 @@ public final class RoomModel
     this.state = RoomModelState.builder().build();
     this.undo_stack = Vector.empty();
     this.stack_max = in_stack_max;
+    this.observable = PublishSubject.create();
+  }
+
+  public Observable<RoomModelUndoAvailable> observable()
+  {
+    return this.observable;
   }
 
   public <T> T evaluate(
@@ -31,8 +40,9 @@ public final class RoomModel
       this.undo_stack = this.undo_stack.tail();
     }
 
-    this.undo_stack = this.undo_stack.append(op);
     this.state = result.state();
+    this.undo_stack = this.undo_stack.append(op);
+    this.observable.onNext(RoomModelUndoAvailable.of(this.undoAvailable()));
     return result.result();
   }
 
@@ -58,6 +68,7 @@ public final class RoomModel
       final RoomModelState new_state = op.undo(this.state);
       this.state = NullCheck.notNull(new_state, "New state");
       this.undo_stack = this.undo_stack.take(this.undoStackSize() - 1);
+      this.observable.onNext(RoomModelUndoAvailable.of(this.undoAvailable()));
     }
   }
 }

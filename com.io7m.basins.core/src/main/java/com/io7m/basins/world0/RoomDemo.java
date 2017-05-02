@@ -61,7 +61,6 @@ public final class RoomDemo
     private final RoomModel model;
     private final RoomEditingModel model_edit;
     private final RoomEditingPolygonCreatorType poly_create;
-    private final PublishSubject<UndoAvailable> undo_status;
     private Vector2I mouse;
     private Vector2I mouse_snap;
     private String status;
@@ -73,8 +72,6 @@ public final class RoomDemo
       this.model = new RoomModel(32);
       this.model_edit = new RoomEditingModel(this.model);
       this.poly_create = this.model_edit.polygonCreate();
-      this.undo_status = PublishSubject.create();
-      this.undo_status.onNext(new UndoAvailable(false));
 
       final MouseAdapter listener = new MouseAdapter()
       {
@@ -126,7 +123,6 @@ public final class RoomDemo
       } catch (final Exception e) {
         this.status = e.getMessage();
       } finally {
-        this.undo_status.onNext(new UndoAvailable(this.model.undoAvailable()));
         this.repaint();
       }
     }
@@ -218,18 +214,6 @@ public final class RoomDemo
     public void undo()
     {
       this.model.undo();
-      this.undo_status.onNext(new UndoAvailable(this.model.undoAvailable()));
-    }
-  }
-
-  private static final class UndoAvailable
-  {
-    private final boolean available;
-
-    UndoAvailable(
-      final boolean in_available)
-    {
-      this.available = in_available;
     }
   }
 
@@ -254,8 +238,9 @@ public final class RoomDemo
       edit_undo.setEnabled(false);
       edit_undo.setMnemonic('U');
       edit_undo.setAccelerator(KeyStroke.getKeyStroke('Z', CTRL_DOWN_MASK));
-      edit_undo.addActionListener(e -> canvas.undo());
-      this.canvas.undo_status.subscribe(u -> edit_undo.setEnabled(u.available));
+      edit_undo.addActionListener(e -> this.canvas.undo());
+      this.canvas.model.observable().subscribe(
+        u -> edit_undo.setEnabled(u.available()));
 
       final JMenu edit = new JMenu("Edit");
       edit.add(edit_undo);
