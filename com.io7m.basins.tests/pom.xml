@@ -29,7 +29,12 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>com.io7m.basins.core</artifactId>
-      <version>0.0.1</version>
+      <version>${project.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
     </dependency>
   </dependencies>
 

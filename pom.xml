@@ -122,6 +122,21 @@
         <artifactId>logback-classic</artifactId>
         <version>1.2.3</version>
       </dependency>
+      <dependency>
+        <groupId>io.javaslang</groupId>
+        <artifactId>javaslang</artifactId>
+        <version>2.1.0-alpha</version>
+      </dependency>
+      <dependency>
+        <groupId>org.immutables.javaslang</groupId>
+        <artifactId>javaslang-encodings</artifactId>
+        <version>0.3.0</version>
+      </dependency>
+      <dependency>
+        <groupId>org.derive4j</groupId>
+        <artifactId>derive4j</artifactId>
+        <version>0.11.0</version>
+      </dependency>
 
       <dependency>
         <groupId>junit</groupId>
@@ -142,6 +157,13 @@
             <source>1.8</source>
             <target>1.8</target>
           </configuration>
+        </plugin>
+
+        <!-- KStructural Maven Plugin -->
+        <plugin>
+          <groupId>com.io7m.kstructural</groupId>
+          <artifactId>io7m-kstructural-maven-plugin</artifactId>
+          <version>0.3.1</version>
         </plugin>
       </plugins>
     </pluginManagement>
