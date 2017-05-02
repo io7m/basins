@@ -46,9 +46,14 @@ public final class RoomModel
     return this.undo_stack.size();
   }
 
+  public boolean undoAvailable()
+  {
+    return this.undoStackSize() >= 1;
+  }
+
   public void undo()
   {
-    if (this.undoStackSize() >= 1) {
+    if (this.undoAvailable()) {
       final RoomModelOpType<?> op = this.undo_stack.last();
       final RoomModelState new_state = op.undo(this.state);
       this.state = NullCheck.notNull(new_state, "New state");

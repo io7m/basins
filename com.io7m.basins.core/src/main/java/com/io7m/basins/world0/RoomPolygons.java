@@ -18,6 +18,7 @@ package com.io7m.basins.world0;
 
 import com.io7m.jtensors.core.unparameterized.vectors.Vector2I;
 import com.io7m.junreachable.UnreachableCodeException;
+import javaslang.collection.Seq;
 import javaslang.collection.Vector;
 
 public final class RoomPolygons
@@ -44,7 +45,7 @@ public final class RoomPolygons
   }
 
   static boolean isConvex(
-    final Vector<Vector2I> points)
+    final Seq<Vector2I> points)
   {
     boolean got_negative = false;
     boolean got_positive = false;

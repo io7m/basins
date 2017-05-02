@@ -16,29 +16,32 @@
 
 package com.io7m.basins.world0;
 
-import com.io7m.basins.core.ConvexPolygon;
-import com.io7m.jtensors.core.unparameterized.vectors.Vector2D;
 import com.io7m.jtensors.core.unparameterized.vectors.Vector2I;
-import com.io7m.jtensors.core.unparameterized.vectors.Vectors2D;
 import com.io7m.jtensors.core.unparameterized.vectors.Vectors2I;
+import io.reactivex.subjects.PublishSubject;
+import javaslang.collection.Seq;
+import javaslang.collection.Vector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.swing.JFrame;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
-import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.Stroke;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.util.List;
+
+import static java.awt.event.InputEvent.CTRL_DOWN_MASK;
 
 public final class RoomDemo
 {
@@ -55,6 +58,10 @@ public final class RoomDemo
 
   private static final class PolygonCanvas extends JPanel
   {
+    private final RoomModel model;
+    private final RoomEditingModel model_edit;
+    private final RoomEditingPolygonCreatorType poly_create;
+    private final PublishSubject<UndoAvailable> undo_status;
     private Vector2I mouse;
     private Vector2I mouse_snap;
     private String status;
@@ -63,6 +70,11 @@ public final class RoomDemo
     {
       this.mouse = Vectors2I.zero();
       this.mouse_snap = Vectors2I.zero();
+      this.model = new RoomModel(32);
+      this.model_edit = new RoomEditingModel(this.model);
+      this.poly_create = this.model_edit.polygonCreate();
+      this.undo_status = PublishSubject.create();
+      this.undo_status.onNext(new UndoAvailable(false));
 
       final MouseAdapter listener = new MouseAdapter()
       {
@@ -105,9 +117,16 @@ public final class RoomDemo
           Integer.valueOf(button));
 
         if (button == 1) {
-
+          if (this.poly_create.addPoint(this.mouse_snap)) {
+            final RoomPolygonID pid = this.poly_create.create();
+            this.status = "Created " + pid.value();
+          }
         }
+
+      } catch (final Exception e) {
+        this.status = e.getMessage();
       } finally {
+        this.undo_status.onNext(new UndoAvailable(this.model.undoAvailable()));
         this.repaint();
       }
     }
@@ -148,6 +167,23 @@ public final class RoomDemo
         gg.drawString(this.status, 16, 16);
       }
 
+      {
+        final Vector<Vector2I> in_progress = this.poly_create.points();
+        if (!in_progress.isEmpty()) {
+          drawPoints(gg, in_progress, Color.GRAY);
+        }
+      }
+
+      {
+        final RoomModelState state = this.model.state();
+        state.polygons().forEach(
+          (poly_id, poly) ->
+            drawPoints(
+              gg,
+              poly.points().map(p -> state.pointGet(p).position()),
+              Color.BLUE));
+      }
+
       gg.setPaint(Color.GREEN);
       gg.fillOval(this.mouse.x() - 4, this.mouse.y() - 4, 8, 8);
 
@@ -155,50 +191,9 @@ public final class RoomDemo
       gg.fillOval(this.mouse_snap.x() - 4, this.mouse_snap.y() - 4, 8, 8);
     }
 
-    private void drawPolygon(
-      final Graphics2D gg,
-      final ConvexPolygon p)
-    {
-      final List<Vector2I> vertices = p.vertices();
-      drawPoints(gg, vertices, Color.BLUE);
-
-      for (int pi0 = 0; pi0 < vertices.size(); ++pi0) {
-        final int pi1 = pi0 + 1 == vertices.size() ? 0 : pi0 + 1;
-
-        final Vector2I p0 = vertices.get(pi0);
-        final Vector2D axis = Vectors2D.scale(p.normal(pi0, pi1), 16.0);
-        gg.setPaint(Color.BLUE);
-        final int x0 = p0.x();
-        final int y0 = p0.y();
-        final int x1 = (int) ((double) x0 + axis.x());
-        final int y1 = (int) ((double) y0 + axis.y());
-        gg.drawLine(x0, y0, x1, y1);
-      }
-
-      final Stroke s = gg.getStroke();
-      try {
-        final float[] dash = {3.0f};
-        gg.setPaint(Color.PINK);
-        gg.setStroke(new BasicStroke(
-          1.0f,
-          BasicStroke.CAP_BUTT,
-          BasicStroke.JOIN_MITER,
-          10.0f,
-          dash,
-          0.0f));
-
-        for (final Vector2I v : vertices) {
-          gg.drawLine(-1000, v.y(), 1000, v.y());
-          gg.drawLine(v.x(), -1000, v.x(), 1000);
-        }
-      } finally {
-        gg.setStroke(s);
-      }
-    }
-
     private static void drawPoints(
       final Graphics2D gg,
-      final List<Vector2I> pl,
+      final Seq<Vector2I> pl,
       final Color c)
     {
       for (int index = 0; index < pl.size(); ++index) {
@@ -219,6 +214,23 @@ public final class RoomDemo
         gg.drawLine(first.x(), first.y(), last.x(), last.y());
       }
     }
+
+    public void undo()
+    {
+      this.model.undo();
+      this.undo_status.onNext(new UndoAvailable(this.model.undoAvailable()));
+    }
+  }
+
+  private static final class UndoAvailable
+  {
+    private final boolean available;
+
+    UndoAvailable(
+      final boolean in_available)
+    {
+      this.available = in_available;
+    }
   }
 
   private static final class PolygonWindow extends JFrame
@@ -231,6 +243,27 @@ public final class RoomDemo
 
       this.canvas = new PolygonCanvas();
       this.canvas.setFocusable(true);
+
+      final JMenuItem file_exit = new JMenuItem("Exit");
+      file_exit.addActionListener(e -> this.dispose());
+      file_exit.setMnemonic('x');
+      final JMenu file = new JMenu("File");
+      file.add(file_exit);
+
+      final JMenuItem edit_undo = new JMenuItem("Undo");
+      edit_undo.setEnabled(false);
+      edit_undo.setMnemonic('U');
+      edit_undo.setAccelerator(KeyStroke.getKeyStroke('Z', CTRL_DOWN_MASK));
+      edit_undo.addActionListener(e -> canvas.undo());
+      this.canvas.undo_status.subscribe(u -> edit_undo.setEnabled(u.available));
+
+      final JMenu edit = new JMenu("Edit");
+      edit.add(edit_undo);
+
+      final JMenuBar menu = new JMenuBar();
+      menu.add(file);
+      menu.add(edit);
+      this.setJMenuBar(menu);
 
       this.setPreferredSize(new Dimension(800, 600));
       this.getContentPane().add(this.canvas);

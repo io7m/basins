@@ -1,6 +1,7 @@
 package com.io7m.basins.world0;
 
 import com.io7m.basins.core.BasinsImmutableStyleType;
+import com.io7m.jtensors.core.unparameterized.vectors.Vector2I;
 import javaslang.collection.Multimap;
 import javaslang.collection.TreeMap;
 import javaslang.collection.Vector;
@@ -8,7 +9,10 @@ import org.immutables.javaslang.encodings.JavaslangEncodingEnabled;
 import org.immutables.value.Value;
 
 import java.util.NoSuchElementException;
+import java.util.Objects;
+import java.util.Optional;
 
+import static com.io7m.jnull.NullCheck.notNull;
 import static java.lang.Math.addExact;
 
 @BasinsImmutableStyleType
@@ -39,9 +43,22 @@ public interface RoomModelStateType
       .getOrElse(RoomPolygonID.of(0));
   }
 
+  default Optional<RoomPoint> pointLookup(
+    final Vector2I position)
+  {
+    notNull(position, "Position");
+
+    return this.points()
+      .find(p -> Objects.equals(p._2.position(), position))
+      .map(p -> p._2)
+      .toJavaOptional();
+  }
+
   default RoomPoint pointGet(
     final RoomPointID id)
   {
+    notNull(id, "ID");
+
     final TreeMap<RoomPointID, RoomPoint> p = this.points();
     if (!p.containsKey(id)) {
       throw new NoSuchElementException("No such point: " + id.value());
@@ -52,6 +69,8 @@ public interface RoomModelStateType
   default RoomPolygon polygonGet(
     final RoomPolygonID id)
   {
+    notNull(id, "ID");
+
     final TreeMap<RoomPolygonID, RoomPolygon> p = this.polygons();
     if (!p.containsKey(id)) {
       throw new NoSuchElementException("No such polygon: " + id.value());
@@ -62,6 +81,8 @@ public interface RoomModelStateType
   default Vector<RoomPolygon> polygonsForPoint(
     final RoomPointID id)
   {
+    notNull(id, "ID");
+
     final TreeMap<RoomPointID, RoomPoint> o = this.points();
     final TreeMap<RoomPolygonID, RoomPolygon> polys = this.polygons();
     final Multimap<RoomPointID, RoomPolygonID> pp = this.pointsPolygons();
